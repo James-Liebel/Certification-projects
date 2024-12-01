@@ -1,0 +1,156 @@
+Treemap:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Treemap</title>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <style>
+        .cell {
+            stroke: #fff;
+            stroke-width: 1;
+        }
+        text {
+            font-size: 10px;
+            pointer-events: none;
+        }
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 5px 10px;
+            font-size: 12px;
+            border-radius: 5px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .bottom-text {
+          font-size: 26px;
+        }
+    </style>
+</head>
+<body>
+  <title id='title'></title>
+  <description id='description'></description>
+  <label for='dataSelection'>Select Data Set:</label>
+  <select id='dataSelection'>
+    <option value='https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/kickstarter-funding-data.json'>Kickstarter Data</option>
+    <option value='https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/movie-data.json'>Movie Data</option>
+    <option value='https://cdn.freecodecamp.org/testable-projects-fcc/data/tree_map/video-game-sales-data.json'>Video Game Sales Data</option>
+  </select>
+  
+  
+  
+    <script>
+    
+        const w = 1000;
+        const h = 800;
+        const padding=200;
+
+        const color = d3.scaleOrdinal(d3.schemeCategory10);
+
+        const svg = d3.select('body').append('svg').attr('width', w).attr('height', h);
+
+        const tooltip = d3.select('body')
+            .append('div')
+            .attr('class', 'tooltip');
+
+        // Fetching the data
+        
+        function loadData(url){
+          d3.json(url)
+              .then(data => {
+                svg.selectAll('*').remove();
+                
+                  // Prepare the data
+                  const root = d3.hierarchy(data)
+                      .sum(d => d.value) // Sum the values for the treemap
+                      .sort((a, b) => b.value - a.value); // Sort by value
+
+                  // Create the treemap layout
+                  d3.treemap()
+                      .size([w-padding, h-padding])
+                      .padding(1)
+                      (root);
+
+                  const cells = svg.selectAll('.cell')
+                      .data(root.leaves())
+                      .enter()
+                      .append('g')
+                      .attr('class', 'cell')
+                      .attr('transform', d => `translate(${d.x0}, ${d.y0})`);
+
+
+                      
+                  cells.append('rect')
+                      .attr('width', d => d.x1 - d.x0)
+                      .attr('height', d => d.y1 - d.y0)
+                      .attr('class', 'tile')
+                      .attr('data-name',d=>d.data.name)
+                      .attr('data-category',d=>d.data.category)
+                      .attr('data-value',d=>d.data.value)
+                      .attr('fill', d => d.parent ? color(d.parent.data.name) : '#ccc') // Fallback color for root
+                      .attr('stroke', '#fff')
+                      .on("mouseover", (event,d)=>{
+                        tooltip
+                          .style('left',`${event.pageX+5}px`)
+                          .style('top',`${event.pageY-28}px`)
+                          .style('opacity',1)
+                          .attr('id','tooltip')
+                          .attr('data-value',d.data.value)
+                          .html(`name: ${d.data.name} <br>category: ${d.parent.data.name} <br>value: ${d.data.value}`)
+                          
+                  
+                
+                
+                })
+               .on('mouseout', function(){
+                 tooltip.style('opacity',0);
+               })
+               
+              cells.append('text')
+                      .attr('x', d => (d.x1 - d.x0) / 2)
+                      .attr('y', d => (d.y1 - d.y0) / 2)
+                      .attr('text-anchor', 'middle')
+                      .attr('dy', '.35em') // Vertically center text
+                      .text(d => d.data.name.length > 10 ? `${d.data.name.slice(0, 10)}...` : d.data.name)
+                      .attr('font-family', 'verdana');
+                      
+                      
+                      
+              const legend=svg.append('g').attr('id', 'legend').attr('transform', 'translate(20,700)');
+              const legendWidth=600;
+              const legendHeight=80;
+              
+              //root.children is the array of names and map iterates through them
+              legend.selectAll('rect').data(root.children.map(d=>d.data.name)).enter().append('rect')
+                .attr('x',(d,i)=>i*100)
+                .attr('y', 0)
+                .attr('width',20)
+                .attr('height',20)
+                .attr('class','legend-item')
+                .attr('fill', d=>color(d));
+                
+              svg.append('text')
+                .attr('x',20)
+                .attr('y',750)
+                .attr('class', 'bottom-text')
+                .text(root.children.map(d=>d.data.name).join(' '));
+              })
+            .catch(error => console.error("Error loading data:", error));
+        }
+        
+        const dataSelection=document.getElementById('dataSelection');
+        loadData(dataSelection.value);
+          
+          
+        dataSelection.addEventListener('change', ()=>{
+          
+          loadData(dataSelection.value);
+        })
+    </script>
+</body>
+</html>
+
